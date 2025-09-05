@@ -7,7 +7,7 @@ import re
 #pridobitev podatkov iz spleta
 
 # definirajte URL glavne strani bolhe za oglase z mačkami
-cats_frontpage_url = "https://www.nepremicnine.net/nepremicnine.html?last=31"   #bolje da imena konstant pišemo z velikimi črkami
+cats_frontpage_url = "https://www.bolha.com/hitro-iskanje?categoryIds%5B%5D=9579%2C9580%2C10920&geo%5Blat%5D=46.038468290864&geo%5Blng%5D=14.469004869461&geo%5BautoComplete%5D=Petrol+-+Ljubljana+-+Tr%C5%BEa%C5%A1ka+130%2C+1000+Ljubljana%2C+Slovenija&geo%5Bradius%5D=100"   #bolje da imena konstant pišemo z velikimi črkami
 # mapa, v katero bomo shranili podatke
 cat_directory = 'podatki'
 # ime datoteke v katero bomo shranili glavno stran
@@ -22,7 +22,7 @@ def download_url_to_string(url):
     """
     try:
         # del kode, ki morda sproži napako
-        headers = {"User-agent": "Chrome/136.0.7103.114"}     #da spletna stran ne misli da smo bot:  Chrome/verzija chroma
+        headers = {"User-agent": "Chrome/139.0.7258.139"}     #da spletna stran ne misli da smo bot:  Chrome/verzija chroma
         page_content = requests.get(url, headers=headers,).text   #v terminal napišemo: python -m pip install requests
     except requests.exceptions.RequestException:
         # koda, ki se izvede pri napaki
@@ -47,13 +47,16 @@ def save_string_to_file(text, directory, filename):
 # Definirajte funkcijo, ki prenese glavno stran in jo shrani v datoteko.
 
 
-def save_frontpage(page, directory, filename):
-    """Funkcija shrani vsebino spletne strani na naslovu "page" v datoteko
-    "directory"/"filename"."""
-    text = download_url_to_string(page)  #to da iz spleta, spodnjo iz mape
-    #text = read_file_to_string(directory, 'stran.html')
-    save_string_to_file(text, directory, filename)
-    return text
+def save_multiple_pages(base_url, directory, filename_prefix, num_pages=10):
+    """Shrani več zaporednih strani (npr. 10 strani oglasov) v mape."""
+    all_content = ""
+    for page_num in range(1, num_pages + 1):
+        url = f"{base_url}?page={page_num}"
+        print(f"Prenašam: {url}")
+        text = download_url_to_string(url)
+        save_string_to_file(text, directory, f"{filename_prefix}_{page_num}.html")
+        all_content += text
+    return all_content
 
 
 
@@ -81,7 +84,7 @@ def read_file_to_string(directory, filename):   #odpremo datoteko za branje
 def page_to_ads(page_content):
     """Funkcija poišče posamezne oglase, ki se nahajajo v spletni strani in
     vrne seznam oglasov."""
-    return re.findall(r'<div class="property-box mt-4 mt-md-0" itemprop="item" itemscope="" itemtype="http://schema.org/Offer">(.*?)</div></div></div>', page_content, flags=re.DOTALL)    
+    return re.findall(r'<article class="entity-body cf">(.*?)</article>', page_content, flags=re.DOTALL)    
     # *? - da se ustavi res samo pri koncu prvega oglasa / flags... da pika(.) res pomeni vse (drugace ne zavzame naslednje vrstice)
     
 
@@ -92,26 +95,24 @@ def page_to_ads(page_content):
 def get_dict_from_ad_block(block):
     """Funkcija iz niza za posamezen oglasni blok izlušči podatke o imenu, ceni
     in opisu ter vrne slovar, ki vsebuje ustrezne podatke."""
-    namen = re.search(r'(Prodaja|Oddaja|Najem|Nakup):', block)
-    objekt = re.search(r'(?:Prodaja|Oddaja|Najem|Nakup):\s*([^,]+)', block)
-    lokacija = re.search(r'<h2>(.*)</h2>', block)
-    povrsina = re.search(r'<li><img .*?>([\d,\.]+\s*m)<sup>2</sup></li>', block)
-    leto = re.search(r'<li><img .*?>(\d{4})</li>', block)
-    cena = re.search(r'<h6 class="">(.*)</h6>', block, flags=re.DOTALL)
+    lokacija = re.search(r'Lokacija: </span>(.*)<br />', block)
+    povrsina = re.search(r'Bivalna površina:\s*([\d,\.]+)\s*m2', block)
+    datum = re.search(r'pubdate="pubdate">(.*)\.</time>', block)
+    razdalja = re.search(r'Razdalja:\s*([\d,\.]+\s*(?:m|km))', block)
+    cena = re.search(r'<strong class="price price--hrk">(.*)</strong>', block, flags=re.DOTALL)
 
-    if namen == None or objekt == None or lokacija == None or povrsina == None or leto == None or cena == None:
+    if lokacija == None or povrsina == None or datum == None or razdalja == None or cena == None:
         print("Napaka v bloku:", block)
         return None
 
 
 
     return {
-        'objekt': objekt.group(1),
-        'namen': namen.group(1),
         'lokacija': lokacija.group(1),
-        'povrsina': povrsina.group(1),
+        'povrsina': povrsina.group(1) + " m2",
         'cena': re.sub(r'&nbsp;<span class="currency">€</span>', ' €', cena.group(1).strip()),
-        'leto': leto.group(1)
+        'razdalja': re.sub(r'(m|km)$', '', razdalja.group(1)).strip() + ' km',
+        'datum': datum.group(1)
     }
 
 
@@ -120,13 +121,15 @@ def get_dict_from_ad_block(block):
 # vseh oglasih strani.
 
 
-def ads_from_file(filename, directory):
-    """Funkcija prebere podatke v datoteki "directory"/"filename" in jih
-    pretvori (razčleni) v pripadajoč seznam slovarjev za vsak oglas posebej."""
-    page_content = read_file_to_string(directory, filename)
-    blocks = page_to_ads(page_content)
-    ads = [get_dict_from_ad_block(block) for block in blocks]
-    return [ad for ad in ads if ad != None]
+def ads_from_files(directory, filename_prefix, num_pages):
+    ads = []
+    for page_num in range(1, num_pages + 1):
+        filename = f"{filename_prefix}_{page_num}.html"
+        page_content = read_file_to_string(directory, filename)
+        blocks = page_to_ads(page_content)
+        page_ads = [get_dict_from_ad_block(block) for block in blocks]
+        ads.extend([ad for ad in page_ads if ad is not None])
+    return ads
 
 ###############################################################################
 # Obdelane podatke želimo sedaj shraniti.
@@ -176,15 +179,16 @@ def main(redownload=True, reparse=True):
     """
     # Najprej v lokalno datoteko shranimo glavno stran
     if redownload:
-        save_frontpage(cats_frontpage_url, cat_directory, frontpage_filename)
+        save_multiple_pages(cats_frontpage_url, cat_directory, "nepremicnine", num_pages=10)
 
     # Iz lokalne (html) datoteke preberemo podatke
     # Podatke preberemo v lepšo obliko (seznam slovarjev)
     # Podatke shranimo v csv datoteko
     if reparse:
-        ads = ads_from_file(frontpage_filename, cat_directory)
+        num_pages = 10  # prilagodi, koliko strani želiš
+        ads = ads_from_files(cat_directory, "nepremicnine", num_pages)
         write_cat_ads_to_csv(ads, cat_directory, csv_filename)
 
 if __name__ == '__main__':    #če datoteko vključimo drugam, se nam main() ne izvede
-    main(redownload=True)
+    main(True)
 
