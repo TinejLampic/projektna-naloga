@@ -79,7 +79,7 @@ def get_dict_from_ad_block(block):    #funkcija za posamezen oglas izlušči že
         'povrsina': povrsina.group(1) + " m2",
         'cena': re.sub(r'&nbsp;<span class="currency">€</span>', ' €', cena.group(1).strip()),
         'razdalja': re.sub(r'(m|km)$', '', razdalja.group(1)).strip() + ' km',
-        'datum objave': datum.group(1)
+        'datum': datum.group(1)
     }
 
 
