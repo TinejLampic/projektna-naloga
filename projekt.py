@@ -28,7 +28,7 @@ def download_url_to_string(url):   #funkcija v obliki niza vrne vsebino spletne 
     return page_content
 
 
-def save_string_to_file(text, directory, filename):   #vrednost paprametra 'text' zapiše v novo ustvarjeno datoteko
+def save_string_to_file(text, directory, filename):   #vrednost parametra 'text' zapiše v novo ustvarjeno datoteko
 
     os.makedirs(directory, exist_ok=True)
     path = os.path.join(directory, filename)
@@ -70,7 +70,7 @@ def get_dict_from_ad_block(block):    #funkcija za posamezen oglas izlušči že
     razdalja = re.search(r'Razdalja:\s*([\d,\.]+\s*(?:m|km))', block)
     cena = re.search(r'<strong class="price price--hrk">(.*)</strong>', block, flags=re.DOTALL)
 
-    if lokacija == None or povrsina == None or datum == None or razdalja == None or cena == None:   #poskrbi, da ne upoštevamo oglasa, pri katerem kakšen podatek majnka
+    if lokacija == None or povrsina == None or datum == None or razdalja == None or cena == None:   #poskrbi, da ne upoštevamo oglasa, pri katerem kakšen podatek manjka
         print("Napaka v bloku:", block)
         return None
 
@@ -79,12 +79,12 @@ def get_dict_from_ad_block(block):    #funkcija za posamezen oglas izlušči že
         'povrsina': povrsina.group(1) + " m2",
         'cena': re.sub(r'&nbsp;<span class="currency">€</span>', ' €', cena.group(1).strip()),
         'razdalja': re.sub(r'(m|km)$', '', razdalja.group(1)).strip() + ' km',
-        'datum': datum.group(1)
+        'datum objave': datum.group(1)
     }
 
 
 
-def ads_from_files(directory, filename_prefix, num_pages):   #funkcija prebere posamezne strani oglasov (Html datoteke), iz njih izlušči bloke z oglasi, jih pretvori v slovarje s podatki in vse skupaj združi v seznam oglasov
+def ads_from_files(directory, filename_prefix, num_pages):   #funkcija prebere posamezne strani oglasov (html datoteke), iz njih izlušči bloke z oglasi, jih pretvori v slovarje s podatki in vse skupaj združi v seznam oglasov
     ads = []
     for page_num in range(1, num_pages + 1):
         filename = f"{filename_prefix}_{page_num}.html"
@@ -112,7 +112,7 @@ def write_csv(fieldnames, rows, directory, filename):
 
 def write_nepremicnine_ads_to_csv(ads, directory, filename):   #funkcija, ki zapiše neprazen seznam slovarjev v csv datoteko
     assert ads and (all(j.keys() == ads[0].keys() for j in ads))    #assert sproži napako, če pogoj ni izpolnjen (če je seznam oglasov definiran in če imajo vsi slovarji v seznamu enake ključe)
-    fieldnames = list(ads[0].keys())                                #ključe spremenimo v seznam, to so imena stolpceb
+    fieldnames = list(ads[0].keys())                                #ključe spremenimo v seznam, to so imena stolpcev
     write_csv(fieldnames, ads, directory, filename)
 
 
@@ -120,7 +120,7 @@ def write_nepremicnine_ads_to_csv(ads, directory, filename):   #funkcija, ki zap
 
 def main(redownload=True, reparse=True):    #ta funkcija izvede celoten del pridobivanja podatkov
 
-    if redownload:   # Najprej v lokalno datoteko prenesemo strni
+    if redownload:   # najprej v lokalno datoteko prenesemo strani
         save_multiple_pages(nepremicnine_frontpage_url, nepremicnine_directory, "nepremicnine", num_pages=200)
 
     if reparse:    #iz datotek prebere podatke, jih uredi in shrani v csv
