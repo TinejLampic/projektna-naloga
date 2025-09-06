@@ -7,9 +7,9 @@ import re
 #pridobitev podatkov iz spleta
 
 # definirajte URL glavne strani bolhe za oglase z mačkami
-cats_frontpage_url = "https://www.bolha.com/hitro-iskanje?categoryIds%5B%5D=9579%2C9580%2C10920&geo%5Blat%5D=46.038468290864&geo%5Blng%5D=14.469004869461&geo%5BautoComplete%5D=Petrol+-+Ljubljana+-+Tr%C5%BEa%C5%A1ka+130%2C+1000+Ljubljana%2C+Slovenija&geo%5Bradius%5D=100"   #bolje da imena konstant pišemo z velikimi črkami
+realestate_frontpage_url = "https://www.bolha.com/hitro-iskanje?categoryIds%5B%5D=9579%2C9580%2C10920&geo%5Blat%5D=46.044463358034&geo%5Blng%5D=14.485205411911&geo%5BautoComplete%5D=Petrol+-+Ljubljana+-+Tr%C5%BEa%C5%A1ka+44%2C+Tr%C5%BEa%C5%A1ka+cesta+44%2C+1000+Ljubljana%2C+Slovenija&geo%5Bradius%5D=100"   #bolje da imena konstant pišemo z velikimi črkami
 # mapa, v katero bomo shranili podatke
-cat_directory = 'podatki'
+realestate_directory = 'podatki'
 # ime datoteke v katero bomo shranili glavno stran
 frontpage_filename = 'nepremicnine.html'
 # ime CSV datoteke v katero bomo shranili podatke
@@ -22,7 +22,7 @@ def download_url_to_string(url):
     """
     try:
         # del kode, ki morda sproži napako
-        headers = {"User-agent": "Chrome/139.0.7258.139"}     #da spletna stran ne misli da smo bot:  Chrome/verzija chroma
+        headers = {"User-Agent": "Chrome/139.0.7258.139"}     #da spletna stran ne misli da smo bot:  Chrome/verzija chroma
         page_content = requests.get(url, headers=headers,).text   #v terminal napišemo: python -m pip install requests
     except requests.exceptions.RequestException:
         # koda, ki se izvede pri napaki
@@ -47,7 +47,7 @@ def save_string_to_file(text, directory, filename):
 # Definirajte funkcijo, ki prenese glavno stran in jo shrani v datoteko.
 
 
-def save_multiple_pages(base_url, directory, filename_prefix, num_pages=10):
+def save_multiple_pages(base_url, directory, filename_prefix, num_pages=200):
     """Shrani več zaporednih strani (npr. 10 strani oglasov) v mape."""
     all_content = ""
     for page_num in range(1, num_pages + 1):
@@ -156,7 +156,7 @@ def write_csv(fieldnames, rows, directory, filename):
 # stolpce [fieldnames] pridobite iz slovarjev.
 
 
-def write_cat_ads_to_csv(ads, directory, filename):
+def write_realestate_ads_to_csv(ads, directory, filename):
     """Funkcija vse podatke iz parametra "ads" zapiše v csv datoteko podano s
     parametroma "directory"/"filename". Funkcija predpostavi, da so ključi vseh
     slovarjev parametra ads enaki in je seznam ads neprazen."""
@@ -179,15 +179,15 @@ def main(redownload=True, reparse=True):
     """
     # Najprej v lokalno datoteko shranimo glavno stran
     if redownload:
-        save_multiple_pages(cats_frontpage_url, cat_directory, "nepremicnine", num_pages=10)
+        save_multiple_pages(realestate_frontpage_url, realestate_directory, "nepremicnine", num_pages=200)
 
     # Iz lokalne (html) datoteke preberemo podatke
     # Podatke preberemo v lepšo obliko (seznam slovarjev)
     # Podatke shranimo v csv datoteko
     if reparse:
-        num_pages = 10  # prilagodi, koliko strani želiš
-        ads = ads_from_files(cat_directory, "nepremicnine", num_pages)
-        write_cat_ads_to_csv(ads, cat_directory, csv_filename)
+        num_pages = 200  # prilagodi, koliko strani želiš
+        ads = ads_from_files(realestate_directory, "nepremicnine", num_pages)
+        write_realestate_ads_to_csv(ads, realestate_directory, csv_filename)
 
 if __name__ == '__main__':    #če datoteko vključimo drugam, se nam main() ne izvede
     main(True)
